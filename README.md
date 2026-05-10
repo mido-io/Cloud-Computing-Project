@@ -67,12 +67,12 @@ To easily test the application, use the following pre-seeded credentials:
 ### 👤 Customer
 - **Portal:** `http://localhost:3000/auth/login`
 - **Email:** `customer@skydish.com`
-- **Password:** `1234567` 
+- **Password:** `Test1234!` 
 
 ### 🏢 Restaurant Admin (Partner)
 - **Portal:** `http://localhost:3000/restaurant/login`
 - **Email:** `restaurant@skydish.com`
-- **Password:** `password123`
+- **Password:** `Rest1234!`
 
 ### 👑 Super Admin
 - **Portal:** `http://localhost:3000/superadmin/login`
