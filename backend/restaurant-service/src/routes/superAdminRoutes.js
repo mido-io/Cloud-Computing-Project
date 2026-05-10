@@ -61,4 +61,16 @@ router.get('/restaurant/:id', authMiddleware, getRestaurantById);
 router.delete('/restaurant/:id', authMiddleware, deleteRestaurant);
 router.put('/restaurant/:id', authMiddleware, updateRestaurant);
 
+// ✅ Public route — no auth required, customers can browse restaurants
+router.get('/restaurants/public', async (req, res) => {
+  try {
+    const Restaurant = (await import('../models/Restaurant.js')).default;
+    const data = await Restaurant.find({}).select('-admin.password');
+    res.status(200).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 export default router;

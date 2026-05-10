@@ -1,6 +1,6 @@
 // src/App.js
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Contexts
 import { CartProvider } from "./pages/contexts/CartContext"; // ✅ import CartProvider
@@ -40,7 +40,7 @@ import SuperAdminDashboard from './pages/restaurant/pages/SuperAdminDashboard';
 import RestaurantRegister from './pages/restaurant/components/RestaurantRegister';
 import RestaurantLogin from './pages/restaurant/components/RestaurantLogin';
 import RestaurantDashboard from './pages/restaurant/pages/RestaurantDashboard';
-import IndexPage from './pages/restaurant/components/IndexPage';
+import LoginHub from './pages/LoginHub';
 
 // delivery management
 
@@ -62,6 +62,7 @@ function App() {
           <Route path="/contact" element={<ContactAndFeedback />} />
 
           {/* auth routes */}
+          <Route path="/portals" element={<LoginHub />} />
           <Route path="/auth/login" element={<AuthLogin />} />
           <Route path="/auth/register" element={<AuthRegister />} />
           <Route path="/customer/profile" element={<CustomerProfile />} />
@@ -80,7 +81,15 @@ function App() {
           <Route path="/customer/home" element={<CustomerHome />} />
           <Route path="/customer/restaurant/:id" element={<RestaurentDetails />} />
           <Route path="/customer/restaurant/:restaurantId/foods" element={<FoodItemList />} />
-          <Route path="customer/cart" element={<AddToCartPage />} />
+          <Route path="/customer/cart" element={<AddToCartPage />} />
+
+          {/* Redirect missing routes to sensible defaults */}
+          <Route path="/restaurants" element={<Navigate to="/customer/home" replace />} />
+          <Route path="/wallet" element={<Navigate to="/customer/profile" replace />} />
+          <Route path="/faq" element={<Navigate to="/contact" replace />} />
+          <Route path="/add-restaurant" element={<Navigate to="/restaurant/register" replace />} />
+          <Route path="/signup-delivery" element={<Navigate to="/auth/register" replace />} />
+          <Route path="/menu" element={<Navigate to="/customer/home" replace />} />
 
           {/* restaurant management */}
           <Route path="/superadmin/register" element={<SuperAdminRegister />} />
@@ -90,7 +99,6 @@ function App() {
           <Route path="/restaurant/register" element={<RestaurantRegister />} />
           <Route path="/restaurant/login" element={<RestaurantLogin />} />
           <Route path="/restaurant/dashboard" element={<RestaurantDashboard />} />
-          <Route path="/restaurant/home" element={<IndexPage />} />
 
           {/* delivery management */}
 

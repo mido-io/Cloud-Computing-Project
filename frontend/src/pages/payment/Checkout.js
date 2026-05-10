@@ -1,156 +1,120 @@
 import React, { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcElement } from "@stripe/react-stripe-js";
 import axios from "axios";
 import "../../styles/checkout.css";
 
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+const API_BASE_URL = process.env.REACT_APP_PAYMENT_API_URL || "http://localhost:5004";
+const PAYMOB_IFRAME_ID = process.env.REACT_APP_PAYMOB_IFRAME_ID || "1041996";
 
-const CheckoutForm = () => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [clientSecret, setClientSecret] = useState("");
-  const [loading, setLoading] = useState(false);
+const Checkout = () => {
+  const [paymentToken, setPaymentToken] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState("");
-  const [cardType, setCardType] = useState("");
-  const [disablePayment, setDisablePayment] = useState(false);
+  const [paid, setPaid] = useState(false);
 
-  const API_BASE_URL = "http://localhost:5004";
-
-  // Example order data – in production this comes dynamically from your Order Service.
+  // Example order data — in production comes from cart / order service
   const orderData = {
     orderId: "ORDER00036",
     userId: "USER67890",
     amount: 43,
-    currency: "usd",
+    currency: "EGP",
     firstName: "John",
     lastName: "Doe",
-    email: "tharankaruchira18@gmail.com",
-    phone: "+94752504856",
+    email: "customer@skydish.com",
+    phone: "+201001234567",
   };
 
   useEffect(() => {
-    createPaymentIntent();
+    initiatePayment();
+
+    // Listen for Paymob callback message from iframe
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === "paymob_success") {
+        setPaid(true);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const createPaymentIntent = async () => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/payment/process`, orderData);
-      console.log("Response from payment API:", response.data);
-
-      if (response.data.paymentStatus === "Paid" || response.data.disablePayment) {
-        setMessage("✅ This order has already been paid successfully.");
-        setDisablePayment(true);
-        return;
-      }
-
-      if (response.data.clientSecret) {
-        setClientSecret(response.data.clientSecret);
-      } else {
-        setError("⚠️ No valid payment secret found.");
-      }
-    } catch (err) {
-      console.error("Error creating PaymentIntent", err.response?.data || err.message);
-      setError("❌ Failed to create payment. Please try again.");
-    }
-  };
-
-  const handleCardChange = (event) => {
-    if (event.error) {
-      setError(event.error.message);
-    } else {
-      setError(null);
-    }
-    if (event.brand) {
-      setCardType(event.brand);
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!stripe || !elements || !clientSecret) {
-      setError("⚠️ Payment secret is missing.");
-      return;
-    }
+  const initiatePayment = async () => {
     setLoading(true);
     setError(null);
-    setMessage("");
-
-    const cardElement = elements.getElement(CardNumberElement);
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: "card",
-      card: cardElement,
-      billing_details: {
-        name: `${orderData.firstName} ${orderData.lastName}`,
-        email: orderData.email,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    console.log("Using Client Secret:", clientSecret);
-    if (!clientSecret.includes("_secret_")) {
-      setError("⚠️ Invalid payment secret format.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: paymentMethod.id,
-      });
+      const response = await axios.post(`${API_BASE_URL}/api/payment/process`, orderData);
+      console.log("Paymob response:", response.data);
 
-      if (confirmError) {
-        setError(confirmError.message);
-      } else if (paymentIntent.status === "succeeded") {
-        setMessage("✅ Payment Successful!");
-        setDisablePayment(true);
+      const token =
+        response.data.paymentToken ||
+        response.data.payment_key ||
+        response.data.token;
+
+      if (token) {
+        setPaymentToken(token);
       } else {
-        setError("❌ Payment failed. Please try again.");
+        setError("⚠️ Could not retrieve payment token from server.");
       }
     } catch (err) {
-      setError("❌ An unexpected error occurred. Please try again.");
+      console.error("Payment initiation error:", err.response?.data || err.message);
+      setError("❌ Failed to initiate payment. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  const iframeUrl = paymentToken
+    ? `https://accept.paymob.com/api/acceptance/iframes/${PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`
+    : null;
 
   return (
     <div className="checkout-container">
-      <h2 className="checkout-title">Secure Payment</h2>
-      <form onSubmit={handleSubmit} className="checkout-form">
-        <div className="input-group">
-          <label>Card Number</label>
-          <CardNumberElement className="stripe-input" onChange={handleCardChange} />
-          {cardType && <span className={`card-icon ${cardType}`}></span>}
-        </div>
-        <div className="input-group">
-          <label>Expiry Date</label>
-          <CardExpiryElement className="stripe-input" onChange={handleCardChange} />
-        </div>
-        <div className="input-group">
-          <label>CVC</label>
-          <CardCvcElement className="stripe-input" onChange={handleCardChange} />
-        </div>
-        <button type="submit" disabled={!stripe || loading || disablePayment} className="checkout-btn">
-          {loading ? <span className="spinner"></span> : "Pay"}
-        </button>
-        {error && <div className="checkout-error">{error}</div>}
-        {message && <div className="checkout-success">{message}</div>}
-      </form>
-    </div>
-  );
-};
+      <h2 className="checkout-title">💳 Secure Payment</h2>
 
-const Checkout = () => {
-  return (
-    <Elements stripe={stripePromise}>
-      <CheckoutForm />
-    </Elements>
+      <div className="order-summary">
+        <p><strong>Order:</strong> {orderData.orderId}</p>
+        <p><strong>Amount:</strong> {orderData.amount} {orderData.currency}</p>
+      </div>
+
+      {paid && (
+        <div className="checkout-success">
+          ✅ Payment Successful! Your order is confirmed.
+        </div>
+      )}
+
+      {error && (
+        <div className="checkout-error">
+          {error}
+          <button onClick={initiatePayment} className="checkout-btn" style={{ marginTop: "12px" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {loading && !error && (
+        <div style={{ textAlign: "center", padding: "40px" }}>
+          <span className="spinner" />
+          <p>Preparing secure payment...</p>
+        </div>
+      )}
+
+      {iframeUrl && !paid && !loading && (
+        <div className="paymob-iframe-wrapper">
+          <iframe
+            src={iframeUrl}
+            title="Paymob Payment"
+            width="100%"
+            height="600px"
+            style={{ border: "none", borderRadius: "12px" }}
+            allow="payment"
+          />
+        </div>
+      )}
+
+      {!iframeUrl && !loading && !error && (
+        <div className="checkout-error">
+          ⚠️ Payment service is not configured. Please contact support.
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -2,21 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/rdashboard.css';
 
 function RestaurantDashboard() {
-  const [activeTab, setActiveTab] = useState('profile');
-  const [restaurant, setRestaurant] = useState({});
-  const [foodItems, setFoodItems] = useState([]);
+  const [activeTab, setActiveTab]       = useState('profile');
+  const [restaurant, setRestaurant]     = useState({});
+  const [foodItems, setFoodItems]       = useState([]);
+  const [orders, setOrders]             = useState([]);
   const [availability, setAvailability] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [newFoodItem, setNewFoodItem] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    imageUrl: '',
+  const [searchQuery, setSearchQuery]   = useState('');
+  const [newFoodItem, setNewFoodItem]   = useState({
+    name: '', description: '', price: '', category: '', imageUrl: '',
   });
-  const [editFoodItem, setEditFoodItem] = useState(null); // For editing food items
-  const [editProfile, setEditProfile] = useState(false); // For editing profile
-  const [editableProfile, setEditableProfile] = useState(null); // For editable profile data
+  const [editFoodItem, setEditFoodItem]         = useState(null);
+  const [editProfile, setEditProfile]           = useState(false);
+  const [editableProfile, setEditableProfile]   = useState(null);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -64,10 +61,71 @@ function RestaurantDashboard() {
     }
   }, []);
 
+  const fetchOrders = useCallback(async (restId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5005/api/orders', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Filter orders for this restaurant only
+        const myOrders = data.filter(o => o.restaurantId === restId);
+        setOrders(myOrders);
+      }
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRestaurantProfile();
     fetchFoodItems();
   }, [fetchRestaurantProfile, fetchFoodItems]);
+
+  // Fetch orders once restaurant profile loaded
+  useEffect(() => {
+    if (restaurant._id) fetchOrders(restaurant._id);
+  }, [restaurant._id, fetchOrders]);
+
+  const STATUS_NEXT = {
+    'Pending':         'Confirmed',
+    'Confirmed':       'Preparing',
+    'Preparing':       'Out for Delivery',
+    'Out for Delivery':'Delivered',
+  };
+  const STATUS_COLORS = {
+    'Pending':          '#f59e0b',
+    'Confirmed':        '#3b82f6',
+    'Preparing':        '#8b5cf6',
+    'Out for Delivery': '#f97316',
+    'Delivered':        '#22c55e',
+    'Canceled':         '#ef4444',
+  };
+
+  const handleUpdateOrderStatus = async (orderId, nextStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5005/api/orders/status/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.ok) {
+        setOrders(prev =>
+          prev.map(o => o._id === orderId ? { ...o, status: nextStatus } : o)
+        );
+      } else {
+        const d = await res.json();
+        alert(d.message || 'Failed to update order status');
+      }
+    } catch (err) {
+      alert('Error updating order');
+    }
+  };
 
   const handleAddFoodItem = async () => {
     if (!newFoodItem.name || !newFoodItem.description || !newFoodItem.price || !newFoodItem.category || !newFoodItem.imageFile) {
@@ -245,6 +303,19 @@ function RestaurantDashboard() {
         <button onClick={() => setActiveTab('profile')}>Profile</button>
         <button onClick={() => setActiveTab('foodItems')}>Food Items</button>
         <button onClick={() => setActiveTab('availability')}>Availability</button>
+        <button onClick={() => setActiveTab('orders')} style={{ position: 'relative' }}>
+          Orders
+          {orders.filter(o => o.status === 'Pending').length > 0 && (
+            <span style={{
+              position: 'absolute', top: '6px', right: '10px',
+              background: '#ef4444', color: '#fff', borderRadius: '50%',
+              width: '20px', height: '20px', fontSize: '11px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {orders.filter(o => o.status === 'Pending').length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Main Content */}
@@ -456,6 +527,84 @@ function RestaurantDashboard() {
             <button onClick={toggleAvailability}>
               {availability ? 'Mark as Closed' : 'Mark as Open'}
             </button>
+          </div>
+        )}
+
+        {/* ── ORDERS TAB ── */}
+        {activeTab === 'orders' && (
+          <div>
+            <h2>Incoming Orders</h2>
+            {orders.length === 0 ? (
+              <p style={{ color: '#888', marginTop: '20px' }}>No orders yet for your restaurant.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '16px' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
+                    <th style={{ padding: '10px' }}>Order ID</th>
+                    <th style={{ padding: '10px' }}>Items</th>
+                    <th style={{ padding: '10px' }}>Total</th>
+                    <th style={{ padding: '10px' }}>Address</th>
+                    <th style={{ padding: '10px' }}>Status</th>
+                    <th style={{ padding: '10px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(order => (
+                    <tr key={order._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '10px', fontSize: '12px', color: '#64748b' }}>
+                        {order._id.slice(-8)}
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        {order.items.map((item, i) => (
+                          <div key={i} style={{ fontSize: '13px' }}>
+                            {item.foodId} × {item.quantity}
+                          </div>
+                        ))}
+                      </td>
+                      <td style={{ padding: '10px', fontWeight: 'bold' }}>
+                        {order.totalPrice} EGP
+                      </td>
+                      <td style={{ padding: '10px', fontSize: '13px' }}>
+                        {order.deliveryAddress}
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        <span style={{
+                          background: STATUS_COLORS[order.status] || '#94a3b8',
+                          color: '#fff',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                        }}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        {STATUS_NEXT[order.status] ? (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(order._id, STATUS_NEXT[order.status])}
+                            style={{
+                              background: STATUS_COLORS[STATUS_NEXT[order.status]],
+                              color: '#fff',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            → {STATUS_NEXT[order.status]}
+                          </button>
+                        ) : (
+                          <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '13px' }}>✓ Done</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>

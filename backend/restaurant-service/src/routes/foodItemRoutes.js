@@ -21,7 +21,7 @@ router.post('/create', authMiddleware,upload.single('image'), async (req, res) =
       name,
       description,
       price,
-      image: `/uploads/${req.file.filename}`,
+      image: req.file ? `/uploads/${req.file.filename}` : 'https://placehold.co/300x200?text=Food',
       category,
     });
 

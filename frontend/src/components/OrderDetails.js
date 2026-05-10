@@ -6,18 +6,34 @@ import { jsPDF } from "jspdf";
 
 function OrderDetails() {
   const { id } = useParams();
-  const [order, setOrder] = useState(null);
-
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZTI1NjRiOTU5MjliOGYyNDhkOGEzMCIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc0NDM1MDQ1MSwiZXhwIjoxNzQ2OTQyNDUxfQ.C85afR3WOuprjtjU2Kp1zF6W0eOwbWLExHZ0c5-Z2iY"; // Replace with actual token
+  const [order, setOrder]               = useState(null);
+  const [customerName, setCustomerName] = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+
     axios.get(`http://localhost:5005/api/orders/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then(response => setOrder(response.data))
-      .catch(error => console.error("Error fetching order details:", error));
+      .then(async response => {
+        const ord = response.data;
+        setOrder(ord);
+
+        // Resolve restaurant name
+        try {
+          const rRes = await axios.get('http://localhost:5002/api/superAdmin/restaurants/public');
+          const rest = rRes.data.find(r => r._id === ord.restaurantId);
+          setRestaurantName(rest ? rest.name : ord.restaurantId);
+        } catch { setRestaurantName(ord.restaurantId); }
+
+        // Decode customer name from JWT
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setCustomerName(payload.name || payload.email || ord.customerId);
+        } catch { setCustomerName(ord.customerId); }
+      })
+      .catch(error => console.error('Error fetching order details:', error));
   }, [id]);
 
   if (!order) return (
@@ -156,8 +172,8 @@ function OrderDetails() {
           Order Details
         </h2>
 
-        <p><strong>Customer Name:</strong> {order.customerId}</p>
-        <p><strong>Restaurant Name:</strong> {order.restaurantId}</p>
+        <p><strong>Customer Name:</strong> {customerName || order.customerId}</p>
+        <p><strong>Restaurant Name:</strong> {restaurantName || order.restaurantId}</p>
         <p><strong>Delivery Address:</strong> {order.deliveryAddress}</p>
         <p>
           <strong>Status:</strong>
@@ -196,7 +212,7 @@ function OrderDetails() {
           marginTop: "20px",
           color: "#1a73e8"
         }}>
-          Total Price: Rs. {order.totalPrice}
+          Total: {order.totalPrice} EGP
         </p>
       </div>
     </div>

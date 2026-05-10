@@ -1,0 +1,104 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: skydish-ingress
+  namespace: skydish
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # WebSocket support (Socket.IO for order & delivery real-time)
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/websocket-services: "order-service,delivery-service"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: skydish.local        # replace with your domain in production
+      http:
+        paths:
+          # Auth Service — /api/auth/*
+          - path: /api/auth(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 5001
+
+          # Restaurant Service — /api/restaurant/*, /api/food-items/*, /api/superAdmin/*, /uploads/*
+          - path: /api/restaurant(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: restaurant-service
+                port:
+                  number: 5002
+
+          - path: /api/food-items(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: restaurant-service
+                port:
+                  number: 5002
+
+          - path: /api/superAdmin(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: restaurant-service
+                port:
+                  number: 5002
+
+          - path: /uploads(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: restaurant-service
+                port:
+                  number: 5002
+
+          # Delivery Service — /api/delivery/*
+          - path: /api/delivery(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: delivery-service
+                port:
+                  number: 5003
+
+          # Payment Service — /api/payment/*
+          - path: /api/payment(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: payment-service
+                port:
+                  number: 5004
+
+          # Order Service — /api/orders/*, /api/users/*
+          - path: /api/orders(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 5005
+
+          - path: /api/users(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 5005
+
+          # Frontend — catch-all (must be last)
+          - path: /(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

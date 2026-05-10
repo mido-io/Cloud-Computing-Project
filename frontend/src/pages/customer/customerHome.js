@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 function CustomerHome() {
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+
   const [restaurants, setRestaurants] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -14,13 +17,7 @@ function CustomerHome() {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5002/api/superadmin/restaurants', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
+        const res = await fetch('http://localhost:5002/api/superAdmin/restaurants/public');
         const data = await res.json();
         if (res.ok) {
           setRestaurants(data);

@@ -52,8 +52,16 @@ function RestaurantLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check if there are any validation errors before submitting
-    if (Object.values(errors).some((err) => err !== '') || !validateForm()) {
+    // Validate all fields before submitting
+    validate('email', form.email);
+    validate('password', form.password);
+
+    if (!form.email || !form.password) {
+      setMessage('Please enter your email and password.');
+      return;
+    }
+
+    if (Object.values(errors).some((err) => err !== '')) {
       return;
     }
 
@@ -79,9 +87,9 @@ function RestaurantLogin() {
     }
   };
 
-  // Function to check if form is valid (no errors)
+  // Form is valid only when fields are filled AND have no errors
   const validateForm = () => {
-    return !Object.values(errors).some((err) => err !== '');
+    return form.email !== '' && form.password !== '' && !Object.values(errors).some((err) => err !== '');
   };
 
   return (

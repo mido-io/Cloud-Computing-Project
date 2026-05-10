@@ -12,10 +12,6 @@ const protect = (req, res, next) => {
         // Verify the token using the secret key
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        if (!decoded.role) {
-            return res.status(401).json({ message: "Invalid token: Role not found" });
-        }
-
         req.user = decoded; // Attach decoded user data to the request
         next(); // Proceed to the next middleware or route handler
     } catch (error) {

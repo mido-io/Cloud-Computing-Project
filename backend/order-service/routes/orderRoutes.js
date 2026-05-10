@@ -15,17 +15,17 @@ const router = express.Router();
 // Only customers can place orders
 router.post("/", protect, authorizeRoles("customer"), createOrder);
 
-// Only restaurant admins & customers can view orders
-router.get("/", protect, authorizeRoles("customer", "restaurant"), getOrders);
-router.get("/:id", protect, authorizeRoles("customer", "restaurant"), getOrderById);
+// View orders — any authenticated user
+router.get("/", protect, getOrders);
+router.get("/:id", protect, getOrderById);
 
-// Only authenticated customers can update their own orders
-router.patch("/:id", protect, updateOrderDetails);
+// Update order details (items, address) — customers only
+router.patch("/:id", protect, authorizeRoles("customer"), updateOrderDetails);
 
-// Only restaurant admins can update order status
-router.patch("/:id", protect, authorizeRoles("restaurant"), updateOrderStatus);
+// Update order STATUS — any authenticated user (restaurant dashboard uses this)
+router.put("/status/:id", protect, updateOrderStatus);
 
-// Only customers can cancel orders
+// Cancel order — customers only
 router.delete("/:id", protect, authorizeRoles("customer"), cancelOrder);
 
 export default router;

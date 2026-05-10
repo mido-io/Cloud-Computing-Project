@@ -8,14 +8,20 @@ function Orders() {
 
   // Fetch orders from the backend when the component mounts
   useEffect(() => {
-    axios.get("http://localhost:5005/api/orders")
+    const token = localStorage.getItem('token');
+    axios.get("http://localhost:5005/api/orders", {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then((response) => setOrders(response.data))
       .catch((error) => console.error("Error fetching orders:", error));
   }, []);
 
   // Handle delete order
   const handleDelete = (id) => {
-    axios.delete(`http://localhost:5005/api/orders/${id}`)
+    const token = localStorage.getItem('token');
+    axios.delete(`http://localhost:5005/api/orders/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(() => setOrders(orders.filter(order => order._id !== id)))
       .catch((error) => console.error("Error deleting order:", error));
   };

@@ -21,8 +21,8 @@ const restaurantSchema = new mongoose.Schema(
       required: true,
     },
     profilePicture: {
-      type: String, 
-      required: true,
+      type: String,
+      default: 'https://via.placeholder.com/300x200?text=Restaurant',
     },
     admin: {
       email: {

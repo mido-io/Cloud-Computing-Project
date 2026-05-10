@@ -21,6 +21,12 @@ export default function AuthLogin() {
     try {
       const res = await axios.post("http://localhost:5001/api/auth/login", credentials);
       localStorage.setItem("token", res.data.token);
+      // Store customer info for use across pages
+      const customer = res.data.data?.customer;
+      if (customer) {
+        localStorage.setItem("customerName", `${customer.firstName} ${customer.lastName}`);
+        localStorage.setItem("customerId", customer.id);
+      }
       navigate("/customer/profile");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
