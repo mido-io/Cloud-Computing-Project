@@ -79,6 +79,11 @@ To easily test the application, use the following pre-seeded credentials:
 - **Email:** `admin@skydish.com`
 - **Password:** `password123`
 
+### 🚚 Delivery Driver
+- Portal: http://localhost:3000/delivery/login
+- Email: testdriver@skydish.com
+- Password: password123
+
 ---
 
 ## 🚢 Kubernetes Deployment
